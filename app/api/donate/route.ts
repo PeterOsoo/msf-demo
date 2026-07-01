@@ -1,7 +1,5 @@
- 
 import { NextResponse } from 'next/server';
 
-// Define the shape of the expected incoming request data for TypeScript safety
 interface DonationRequestBody {
   name: string;
   email: string;
@@ -19,7 +17,7 @@ export async function POST(request: Request) {
     const body: DonationRequestBody = await request.json();
     const { name, email, amount, paymentMethod, phoneNumber, cardName, cardNumber, expiry, cvc } = body;
 
-    // 1. Core Validation (Applies to all donation methods)
+    // 1. Core Validation
     if (!name || !name.trim()) {
       return NextResponse.json({ error: "Name field is required." }, { status: 400 });
     }
@@ -45,7 +43,10 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3. Payment Gateway Simulation Triggers (Great for proving error-handling to evaluators)
+    // Simulate real-world network latency (2 seconds)
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // 3. Payment Gateway Simulation Triggers
     if (parsedAmount === 404) {
       return NextResponse.json(
         { error: "Simulated Error: Gateway connection timeout." }, 
@@ -53,7 +54,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate a clean mock transaction tracking reference
+    // NEW: Simulate M-Pesa STK Push Timeout if amount is 408
+    if (parsedAmount === 408 && paymentMethod === 'mpesa') {
+      return NextResponse.json(
+        { error: "M-Pesa request timed out. No PIN was entered on your phone." }, 
+        { status: 408 }
+      );
+    }
+
     const transactionId = `MSF-${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
 
     // 4. Return RESTful Success Response
