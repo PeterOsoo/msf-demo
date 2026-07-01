@@ -34,9 +34,13 @@ export async function POST(request: Request) {
     }
 
     // 2. Conditional Payment Method Validation
-    if (paymentMethod === 'mpesa' && !phoneNumber) {
-      return NextResponse.json({ error: "M-Pesa phone number is required." }, { status: 400 });
+    if (paymentMethod === 'mpesa') {
+      const phoneRegex = /^0\d{9}$/;
+      if (!phoneNumber || !phoneRegex.test(phoneNumber.trim())) {
+        return NextResponse.json({ error: "Please enter a valid 10-digit M-Pesa number starting with 0 (e.g., 0722777222)." }, { status: 400 });
+      }
     }
+    
     if (paymentMethod === 'card') {
       if (!cardName || !cardNumber || !expiry || !cvc) {
         return NextResponse.json({ error: "Complete card credentials are required." }, { status: 400 });
@@ -54,7 +58,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // NEW: Simulate M-Pesa STK Push Timeout if amount is 408
     if (parsedAmount === 408 && paymentMethod === 'mpesa') {
       return NextResponse.json(
         { error: "M-Pesa request timed out. No PIN was entered on your phone." }, 
