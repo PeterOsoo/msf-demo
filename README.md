@@ -1,65 +1,64 @@
-```markdown
-# Médecins Sans Frontières (MSF) Eastern Africa — Digital Donations Portal
+# MSF Eastern Africa — Digital Donations Portal
 
-A high-performance, type-safe, mobile-responsive single-page digital donations application engineered for MSF Eastern Africa. This portal features native payment context simulations for local **M-Pesa STK Push** prompts and standard **Credit/Debit Card** payment workflows.
+A type-safe, mobile-responsive donations portal built for Médecins Sans Frontières (MSF) Eastern Africa. Supports simulated **M-Pesa STK Push** and **Credit/Debit Card** payment workflows.
 
-* **Live Hosted URL:** [https://msf-demo-tan.vercel.app](https://msf-demo-tan.vercel.app)
-* **Submitted artifacts:** Interactive Application, Simulated REST API, Written Documentation, API Contract, Architecture Decisions.
-
----
-
-## 1. Technology Stack Decisions
-
-### Core Framework: Next.js (App Router) & TypeScript
-* **Unified Full-Stack Architecture:** Next.js eliminates architectural fragmentation by running serverless Node.js backend endpoints (`/api/*`) within the exact same deployment context as the UI components. This dramatically simplifies client-server network requests and infrastructure footprint.
-* **Deterministic Type Safety:** By implementing TypeScript on both the UI layer and the backend endpoint handlers, the system guarantees strong data contracts. This prevents data runtime errors during form payload deserialization.
-* **Optimized Rendering & Styling:** Built alongside **Tailwind CSS** for component layout utility abstraction and **Lucide/SVG iconography** for fast, script-free visual asset loads.
+- **Live URL:** [https://msf-demo-tan.vercel.app](https://msf-demo-tan.vercel.app)
+- **Deliverables:** Interactive application, simulated REST API, written documentation, API contract, architecture decisions.
 
 ---
 
-## 2. Solution Design & System Assumptions
+## 1. Technology Stack
 
-### Behavioral System Assumptions
-1. **Instantly Configured Channels:** Card authorization triggers real-time response processing. M-Pesa interactions mirror regional network realities by simulating an asynchronous transaction delay via an overlay window.
-2. **Deterministic Simulation Mock States:**
-   * Entering an amount of **`404`** forces a `502 Gateway Connection Timeout` to evaluate client-side state resilience.
-   * Entering an amount of **`408`** combined with an M-Pesa method forces a simulated `408 Request Timeout` to mirror a user ignoring an STK SIM prompt.
-
-### Form UX Decisions
-* **Dynamic Content Adaptation:** Rather than overwhelming anonymous donors with field variants, fields switch conditionally based on the active payment mode.
-* **Aggressive Client Validation:** The primary submit button is evaluating fields in real-time using a strict conditional regex (`/^0\d{9}$/` for M-Pesa mobile inputs). The interface completely locks down click capabilities until validation conditions are satisfied.
+### Next.js (App Router) + TypeScript
+- **Full-stack in one repo:** Serverless API routes (`/api/*`) live alongside UI components in the same deployment — no separate backend infrastructure needed.
+- **End-to-end type safety:** TypeScript on both the UI and API layers enforces strict data contracts and eliminates payload deserialization errors at runtime.
+- **Styling:** Tailwind CSS for layout utilities; Lucide/SVG icons for fast, script-free assets.
 
 ---
 
-## 3. Production Environment Security Hardening Strategy
+## 2. Design Decisions & Assumptions
 
-If transitioning this prototype to a production environment handling live fiscal operations for MSF, the following multi-tiered security controls would be integrated:
+### Simulation Behaviour
+- **Card payments** resolve instantly, mirroring real-time authorization.
+- **M-Pesa payments** simulate the async nature of STK Push via a loading overlay.
+- Entering **`404`** as the amount forces a `502 Gateway Timeout` to test client-side error state handling.
+- Entering **`408`** with M-Pesa selected forces a `408 Request Timeout`, simulating a user ignoring the STK PIN prompt on their phone.
 
-### A. Network & Protocol Resilience
-* **Strict Transport Security (HSTS):** Enforce TLS 1.3 across all connection routes to guarantee secure, encrypted transit.
-* **Content Security Policy (CSP):** Strict script and connect headers to prevent Cross-Site Scripting (XSS) injections and block unrecognized client connections.
-
-### B. Request Ingestion & Data Sanitation
-* **Strict Schema Interception:** Swap out basic data interfaces for schema parsing engines like **Zod** to strip away unauthorized parameter injections before they hit processing functions.
-* **Rate-Limiting Middleware:** Implement token-bucket middleware arrays (e.g., via Redis) to throttle ingestion thresholds on `/api/donate`, suppressing automated scripting and Distributed Denial of Service (DDoS) attempts.
-
-### C. Compliance & Payment Security (PCI-DSS & Tokenization)
-* **Zero Storage Data Isolation:** Complete isolation of payment parameters. To remain compliant with PCI-DSS standards, card attributes should never traverse or log onto MSF infrastructure.
-* **Direct Merchant Tokenization:** Swap our simulated form out for direct secure tokenization scripts embedded straight into client windows from verified payment processing networks (e.g., Safaricom Daraja API or standard banking checkout scripts).
+### Form UX
+- Fields render conditionally based on the selected payment method — donors only see what's relevant.
+- The submit button stays disabled until all fields pass validation. M-Pesa numbers are validated in real-time against `/^0\d{9}$/`.
 
 ---
 
-## 4. API Documentation (REST Principles)
+## 3. Production Security Considerations
 
-The serverless backend handles incoming payload operations through an asynchronous RESTful design vector over JSON.
+If this prototype were deployed to handle live donations, the following controls would be required:
 
-### Submit Payment Simulation
-* **Endpoint:** `POST /api/donate`
-* **Content-Type:** `application/json`
+### Network
+- **HSTS** — enforce TLS 1.3 across all routes.
+- **Content Security Policy (CSP)** — restrict script sources and block unrecognized client connections to prevent XSS.
 
-#### Request Payload Examples
+### Input & Rate Limiting
+- **Schema validation (Zod)** — parse and strip unauthorized fields before they reach processing logic.
+- **Rate limiting** — token-bucket middleware (e.g., Redis) on `/api/donate` to suppress automated abuse and DDoS attempts.
 
-##### Variant A: M-Pesa Channel Selection
+### Payment Compliance (PCI-DSS)
+- **Zero storage** — card data must never touch MSF infrastructure. No logging, no transit through internal systems.
+- **Tokenization** — replace the simulated form with direct tokenization scripts from verified payment processors (Safaricom Daraja API for M-Pesa; standard bank checkout SDKs for card).
+
+---
+
+## 4. API Reference
+
+**Endpoint:** `POST /api/donate`  
+**Content-Type:** `application/json`
+
+---
+
+### Request Payloads
+
+#### Variant A — M-Pesa
+
 ```json
 {
   "name": "Jane Doe",
@@ -68,10 +67,9 @@ The serverless backend handles incoming payload operations through an asynchrono
   "paymentMethod": "mpesa",
   "phoneNumber": "0722777222"
 }
-
 ```
 
-##### Variant B: Credit/Debit Card Channel Selection
+#### Variant B — Credit/Debit Card
 
 ```json
 {
@@ -84,12 +82,13 @@ The serverless backend handles incoming payload operations through an asynchrono
   "expiry": "12/28",
   "cvc": "123"
 }
-
 ```
 
-#### API System Responses
+---
 
-##### HTTP 200 OK — Successful Processing
+### Responses
+
+#### `200 OK` — Success
 
 ```json
 {
@@ -98,44 +97,36 @@ The serverless backend handles incoming payload operations through an asynchrono
   "transactionId": "MSF-K8A9L2XJ1",
   "timestamp": "2026-07-02T14:15:30.000Z"
 }
-
 ```
 
-##### HTTP 400 Bad Request — Validation Breach
+#### `400 Bad Request` — Validation failure
 
 ```json
 {
   "error": "Please enter a valid 10-digit M-Pesa number starting with 0 (e.g., 0722777222)."
 }
-
 ```
 
-##### HTTP 408 Request Timeout — Simulated User Drop-off (Amount: 408)
+#### `408 Request Timeout` — User ignored STK prompt (amount: 408)
 
 ```json
 {
   "error": "M-Pesa request timed out. No PIN was entered on your phone."
 }
-
 ```
 
-##### HTTP 502 Bad Gateway — Simulated Processing Circuit Fault (Amount: 404)
+#### `502 Bad Gateway` — Simulated gateway fault (amount: 404)
 
 ```json
 {
   "error": "Simulated Error: Gateway connection timeout."
 }
-
 ```
 
 ---
 
-## 5. Architectural Recommendations for Future Iterations
+## 5. Future Improvements
 
-1. **Webhook Processing Engine:** Shift long-tail asynchronous operations (like M-Pesa transaction updates) away from polling connections. Instead, implement incoming secure webhook listeners capable of ingesting structural notifications directly from payment gateways.
-2. **Persistent Audit Trails:** Connect transaction logs to isolated, immutable databases (such as PostgreSQL) to track transaction statuses securely without archiving sensitive donor credentials.
-3. **Automated End-to-End Test Matrix:** Introduce structural assertion tests across checkout paths using automation tools like **Playwright**, validating the UI's behavior during complex gateway error responses.
-
-```
-
-```
+1. **Webhooks** — replace polling with incoming webhook listeners for async M-Pesa transaction updates directly from the Daraja API.
+2. **Persistent audit logs** — connect transaction records to an immutable database (PostgreSQL) without storing sensitive donor credentials.
+3. **E2E test suite** — automate checkout path assertions using Playwright, covering gateway error states and edge-case simulations.
