@@ -33,7 +33,7 @@ export default function DonationForm() {
     error: null as string | null
   });
 
-  // Dynamic validation check: requires exactly 10 digits starting with 0 for M-Pesa
+  // Dynamic Validation Check
   const isFormValid = (() => {
     if (!formData.name.trim() || !formData.email.trim() || !formData.amount) return false;
     
@@ -42,15 +42,58 @@ export default function DonationForm() {
     }
     
     if (formData.paymentMethod === 'card') {
-      if (!formData.cardName.trim() || !formData.cardNumber.trim() || !formData.expiry.trim() || !formData.cvc.trim()) {
-        return false;
+      const cleanCardNumber = formData.cardNumber.replace(/\s+/g, '');
+      if (!/^\d{16}$/.test(cleanCardNumber)) return false;
+
+      // Expiry syntax rule check
+      if (!/^(0[1-9]|1[0-2])\/([0-9]{2})$/.test(formData.expiry.trim())) return false;
+
+      // Real-time logical future date check
+      const [inputMonth, inputYear] = formData.expiry.split('/').map(Number);
+      if (inputMonth && inputYear) {
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1; // Months are 0-indexed
+        const currentYear = now.getFullYear() % 100; // Get last 2 digits of year (e.g., 26)
+
+        if (inputYear < currentYear) return false;
+        if (inputYear === currentYear && inputMonth < currentMonth) return false;
       }
+
+      if (!/^\d{3}$/.test(formData.cvc.trim())) return false;
+      if (!formData.cardName.trim()) return false;
     }
     return true;
   })();
 
+  // Smart input masking handler
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+
+    // 1. Masking for Card Number (Auto-space every 4 digits, max 16 digits)
+    if (name === 'cardNumber') {
+      const numericValue = value.replace(/\D/g, '').slice(0, 16);
+      const maskedValue = numericValue.match(/.{1,4}/g)?.join(' ') || numericValue;
+      setFormData((prev) => ({ ...prev, [name]: maskedValue }));
+      return;
+    }
+
+    // 2. Masking for Expiry Date (Auto-insert slash, max 5 characters MM/YY)
+    if (name === 'expiry') {
+      let cleanValue = value.replace(/\D/g, '').slice(0, 4);
+      if (cleanValue.length > 2) {
+        cleanValue = `${cleanValue.slice(0, 2)}/${cleanValue.slice(2)}`;
+      }
+      setFormData((prev) => ({ ...prev, [name]: cleanValue }));
+      return;
+    }
+
+    // 3. Masking for CVC (Max 3 digits)
+    if (name === 'cvc') {
+      const numericValue = value.replace(/\D/g, '').slice(0, 3);
+      setFormData((prev) => ({ ...prev, [name]: numericValue }));
+      return;
+    }
+
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
